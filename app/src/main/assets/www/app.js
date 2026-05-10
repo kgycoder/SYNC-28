@@ -2787,96 +2787,68 @@ document.addEventListener('touchend', e => {
    ANDROID INTEGRATION
 ════════════════════════════════════════════ */
 
-// Android back button
 window.__onAndroidBack = function() {
     const np = document.getElementById('np');
-    if (np && np.classList.contains('on')) {
-        // 전체화면이면 먼저 세로로
-        if (np.classList.contains('fullscreen')) {
-            _exitNpFullscreen();
-            return;
-        }
-        closeNP();
-        return;
-    }
-    if (document.getElementById('pl-dialog-overlay')?.classList.contains('on')) {
-        plDialogCancel(); return;
-    }
-    if (document.getElementById('pl-confirm-overlay')?.classList.contains('on')) {
-        plConfirmCancel(); return;
-    }
-    if (document.getElementById('pl-add-modal-overlay')?.classList.contains('on')) {
-        plAddModalClose(); return;
-    }
+    if (np && np.classList.contains('fullscreen')) { _exitNpFullscreen(); return; }
+    if (np && np.classList.contains('on')) { closeNP(); return; }
+    if (document.getElementById('pl-dialog-overlay')?.classList.contains('on')) { plDialogCancel(); return; }
+    if (document.getElementById('pl-confirm-overlay')?.classList.contains('on')) { plConfirmCancel(); return; }
+    if (document.getElementById('pl-add-modal-overlay')?.classList.contains('on')) { plAddModalClose(); return; }
 };
 
-// ── 전체화면 NP 진입/해제 ──────────────────────────────
 function _enterNpFullscreen() {
     const np = document.getElementById('np');
     if (!np || !np.classList.contains('on')) return;
+    if (np.classList.contains('fullscreen')) return;
     np.classList.add('fullscreen');
     document.body.classList.add('np-landscape');
-
-    // 일반모드 가사 하이라이트 클래스 제거
-    document.querySelectorAll('.np-lyric-line')
-        .forEach(el => el.classList.remove('active', 'prev', 'near'));
-
-    // Android에 landscape 요청
+    document.querySelectorAll('.np-lyric-line').forEach(el => el.classList.remove('active','prev','near'));
     try { window.AndroidBridge.postMessage(JSON.stringify({ type: 'orientation', value: 'landscape' })); } catch {}
-
-    // 레이아웃 확정 후 패널 위치 + 가사 DOM 구축
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                _positionFsPanel();
-                if (LY.lines.length > 0) {
-                    _buildFsLyricsDOM();
-                    requestAnimationFrame(() => _highlightFsLine(LY.curIdx));
-                }
-            });
-        });
-    });
+    _attachFsResizeObserver();
+    requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+        _positionFsPanel();
+        if (LY.lines.length > 0) {
+            _buildFsLyricsDOM();
+            requestAnimationFrame(() => _highlightFsLine(LY.curIdx));
+        }
+    })));
 }
 
 function _exitNpFullscreen() {
     const np = document.getElementById('np');
-    if (!np) return;
+    if (!np || !np.classList.contains('fullscreen')) return;
     np.classList.remove('fullscreen');
     document.body.classList.remove('np-landscape');
-
-    // Android에 portrait 요청
     try { window.AndroidBridge.postMessage(JSON.stringify({ type: 'orientation', value: 'portrait' })); } catch {}
-
     _detachFsResizeObserver();
     _restoreNormalMode();
     document.getElementById('np-fs-lyrics')?.remove();
     document.getElementById('np-fs-artist')?.remove();
-
+    _fsLastIdx = -1; _fsVisible = new Set(); _fsDotsLit = -1;
+    if (LY._dotElFs) LY._dotElFs = null;
     if (LY.lines.length > 0) {
         _renderLyrics();
         requestAnimationFrame(() => _highlightLine(LY.curIdx, true));
     }
 }
 
-// ── Orientation change 감지 ────────────────────────────
 function _onOrientationChange() {
     const isLandscape = window.innerWidth > window.innerHeight;
     const np = document.getElementById('np');
     if (!np) return;
-    if (isLandscape && np.classList.contains('on')) {
-        if (!np.classList.contains('fullscreen')) _enterNpFullscreen();
+    if (isLandscape && np.classList.contains('on') && !np.classList.contains('fullscreen')) {
+        _enterNpFullscreen();
     } else if (!isLandscape && np.classList.contains('fullscreen')) {
         _exitNpFullscreen();
     }
 }
-window.addEventListener('resize', () => setTimeout(_onOrientationChange, 150));
-window.addEventListener('orientationchange', () => setTimeout(_onOrientationChange, 200));
+window.addEventListener('resize', () => setTimeout(_onOrientationChange, 180));
+window.addEventListener('orientationchange', () => setTimeout(_onOrientationChange, 220));
 
-// Mini bar touch: tap to open NP
-const _barEl = document.getElementById('bar');
-if (_barEl) {
-    _barEl.addEventListener('touchstart', e => {
-        const rect = _barEl.getBoundingClientRect();
+const _barEl2 = document.getElementById('bar');
+if (_barEl2) {
+    _barEl2.addEventListener('touchstart', e => {
+        const rect = _barEl2.getBoundingClientRect();
         const touch = e.touches[0];
         if (touch.clientY > rect.bottom - 8) {
             e.preventDefault();
@@ -2885,8 +2857,6 @@ if (_barEl) {
         }
     }, { passive: false });
 }
-
-// Touch-friendly play button
 document.addEventListener('touchend', e => {
     const btn = e.target.closest('.c-play-btn');
     if (btn) { e.preventDefault(); btn.click(); }
