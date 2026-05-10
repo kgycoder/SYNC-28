@@ -2861,3 +2861,47 @@ document.addEventListener('touchend', e => {
     const btn = e.target.closest('.c-play-btn');
     if (btn) { e.preventDefault(); btn.click(); }
 }, { passive: false });
+
+/* ════════════════════════════════════════════
+   ANDROID INTEGRATION
+════════════════════════════════════════════ */
+window.__onAndroidBack = function() {
+    const np = document.getElementById('np');
+    if (np && np.classList.contains('fullscreen')) { _onWindowStateChange(false); return; }
+    if (np && np.classList.contains('on')) { closeNP(); return; }
+    if (document.getElementById('pl-dialog-overlay')?.classList.contains('on')) { plDialogCancel(); return; }
+    if (document.getElementById('pl-confirm-overlay')?.classList.contains('on')) { plConfirmCancel(); return; }
+    if (document.getElementById('pl-add-modal-overlay')?.classList.contains('on')) { plAddModalClose(); return; }
+};
+
+function _handleOrientationChange() {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    const np = document.getElementById('np');
+    if (!np) return;
+    if (isLandscape && np.classList.contains('on') && !np.classList.contains('fullscreen')) {
+        document.body.classList.add('np-fs');
+        _onWindowStateChange(true);
+    } else if (!isLandscape && np.classList.contains('fullscreen')) {
+        document.body.classList.remove('np-fs');
+        _onWindowStateChange(false);
+    }
+}
+window.addEventListener('resize', () => setTimeout(_handleOrientationChange, 180));
+window.addEventListener('orientationchange', () => setTimeout(_handleOrientationChange, 220));
+
+const _barElA = document.getElementById('bar');
+if (_barElA) {
+    _barElA.addEventListener('touchstart', e => {
+        const rect = _barElA.getBoundingClientRect();
+        const touch = e.touches[0];
+        if (touch.clientY > rect.bottom - 8) {
+            e.preventDefault();
+            const pct = (touch.clientX - rect.left) / rect.width;
+            if (S.ytPlayer && S.ytReady && S.dur) S.ytPlayer.seekTo(pct * S.dur, true);
+        }
+    }, { passive: false });
+}
+document.addEventListener('touchend', e => {
+    const btn = e.target.closest('.c-play-btn');
+    if (btn) { e.preventDefault(); btn.click(); }
+}, { passive: false });
