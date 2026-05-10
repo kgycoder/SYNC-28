@@ -4092,3 +4092,11 @@ body.np-landscape #bar { display: none !important; }
     #np.fullscreen #np-fs-lyrics { display: none !important; }
     #np.fullscreen::after { display: none; }
 }
+
+/* ════════════════════════════════════════════
+   ANDROID LANDSCAPE FULLSCREEN NP
+════════════════════════════════════════════ */
+body.np-fs #mob-nav,
+body.np-fs #bar {
+    display: none !important;
+}
