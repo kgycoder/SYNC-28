@@ -2718,156 +2718,13 @@ setTimeout(() => toast('✦ SYNC에 오신 걸 환영해요'), 1000);
    ANDROID INTEGRATION
 ════════════════════════════════════════════ */
 
-// Android back button: close NP if open, else propagate
 window.__onAndroidBack = function() {
     const np = document.getElementById('np');
-    if (np && np.classList.contains('on')) {
-        closeNP();
+    if (np && np.classList.contains('fullscreen')) {
+        _onWindowStateChange(false);
+        document.body.classList.remove('np-fs');
         return;
     }
-    // Could also close modals
-    if (document.getElementById('pl-dialog-overlay')?.classList.contains('on')) {
-        plDialogCancel(); return;
-    }
-    if (document.getElementById('pl-confirm-overlay')?.classList.contains('on')) {
-        plConfirmCancel(); return;
-    }
-    if (document.getElementById('pl-add-modal-overlay')?.classList.contains('on')) {
-        plAddModalClose(); return;
-    }
-};
-
-// Landscape = fullscreen NP (if NP is open)
-let _lastOrientation = screen.orientation?.type || '';
-function _onOrientationChange() {
-    const isLandscape = window.innerWidth > window.innerHeight;
-    const np = document.getElementById('np');
-    if (!np) return;
-    if (isLandscape && np.classList.contains('on')) {
-        np.classList.add('fullscreen');
-        if (LY.lines.length > 0) _buildFsLyrics();
-        // Notify Android to go fullscreen
-        try { window.AndroidBridge.postMessage(JSON.stringify({ type: 'orientation', value: 'landscape' })); } catch {}
-    } else {
-        np.classList.remove('fullscreen');
-        _destroyFsLyrics();
-        try { window.AndroidBridge.postMessage(JSON.stringify({ type: 'orientation', value: 'portrait' })); } catch {}
-    }
-}
-window.addEventListener('resize', _onOrientationChange);
-window.addEventListener('orientationchange', () => setTimeout(_onOrientationChange, 150));
-
-// Touch on mini bar: seek via NP
-const _barEl = document.getElementById('bar');
-if (_barEl) {
-    _barEl.addEventListener('touchstart', e => {
-        // If touching progress area (bottom 4px)
-        const rect = _barEl.getBoundingClientRect();
-        const touch = e.touches[0];
-        if (touch.clientY > rect.bottom - 8) {
-            e.preventDefault();
-            const pct = (touch.clientX - rect.left) / rect.width;
-            if (S.ytPlayer && S.ytReady && S.dur) {
-                S.ytPlayer.seekTo(pct * S.dur, true);
-            }
-        }
-    }, { passive: false });
-}
-
-// Touch-friendly: tap on card thumb plays directly
-document.addEventListener('touchend', e => {
-    const btn = e.target.closest('.c-play-btn');
-    if (btn) {
-        e.preventDefault();
-        btn.click();
-    }
-}, { passive: false });
-
-/* ════════════════════════════════════════════
-   ANDROID INTEGRATION
-════════════════════════════════════════════ */
-
-window.__onAndroidBack = function() {
-    const np = document.getElementById('np');
-    if (np && np.classList.contains('fullscreen')) { _exitNpFullscreen(); return; }
-    if (np && np.classList.contains('on')) { closeNP(); return; }
-    if (document.getElementById('pl-dialog-overlay')?.classList.contains('on')) { plDialogCancel(); return; }
-    if (document.getElementById('pl-confirm-overlay')?.classList.contains('on')) { plConfirmCancel(); return; }
-    if (document.getElementById('pl-add-modal-overlay')?.classList.contains('on')) { plAddModalClose(); return; }
-};
-
-function _enterNpFullscreen() {
-    const np = document.getElementById('np');
-    if (!np || !np.classList.contains('on')) return;
-    if (np.classList.contains('fullscreen')) return;
-    np.classList.add('fullscreen');
-    document.body.classList.add('np-landscape');
-    document.querySelectorAll('.np-lyric-line').forEach(el => el.classList.remove('active','prev','near'));
-    try { window.AndroidBridge.postMessage(JSON.stringify({ type: 'orientation', value: 'landscape' })); } catch {}
-    _attachFsResizeObserver();
-    requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => {
-        _positionFsPanel();
-        if (LY.lines.length > 0) {
-            _buildFsLyricsDOM();
-            requestAnimationFrame(() => _highlightFsLine(LY.curIdx));
-        }
-    })));
-}
-
-function _exitNpFullscreen() {
-    const np = document.getElementById('np');
-    if (!np || !np.classList.contains('fullscreen')) return;
-    np.classList.remove('fullscreen');
-    document.body.classList.remove('np-landscape');
-    try { window.AndroidBridge.postMessage(JSON.stringify({ type: 'orientation', value: 'portrait' })); } catch {}
-    _detachFsResizeObserver();
-    _restoreNormalMode();
-    document.getElementById('np-fs-lyrics')?.remove();
-    document.getElementById('np-fs-artist')?.remove();
-    _fsLastIdx = -1; _fsVisible = new Set(); _fsDotsLit = -1;
-    if (LY._dotElFs) LY._dotElFs = null;
-    if (LY.lines.length > 0) {
-        _renderLyrics();
-        requestAnimationFrame(() => _highlightLine(LY.curIdx, true));
-    }
-}
-
-function _onOrientationChange() {
-    const isLandscape = window.innerWidth > window.innerHeight;
-    const np = document.getElementById('np');
-    if (!np) return;
-    if (isLandscape && np.classList.contains('on') && !np.classList.contains('fullscreen')) {
-        _enterNpFullscreen();
-    } else if (!isLandscape && np.classList.contains('fullscreen')) {
-        _exitNpFullscreen();
-    }
-}
-window.addEventListener('resize', () => setTimeout(_onOrientationChange, 180));
-window.addEventListener('orientationchange', () => setTimeout(_onOrientationChange, 220));
-
-const _barEl2 = document.getElementById('bar');
-if (_barEl2) {
-    _barEl2.addEventListener('touchstart', e => {
-        const rect = _barEl2.getBoundingClientRect();
-        const touch = e.touches[0];
-        if (touch.clientY > rect.bottom - 8) {
-            e.preventDefault();
-            const pct = (touch.clientX - rect.left) / rect.width;
-            if (S.ytPlayer && S.ytReady && S.dur) S.ytPlayer.seekTo(pct * S.dur, true);
-        }
-    }, { passive: false });
-}
-document.addEventListener('touchend', e => {
-    const btn = e.target.closest('.c-play-btn');
-    if (btn) { e.preventDefault(); btn.click(); }
-}, { passive: false });
-
-/* ════════════════════════════════════════════
-   ANDROID INTEGRATION
-════════════════════════════════════════════ */
-window.__onAndroidBack = function() {
-    const np = document.getElementById('np');
-    if (np && np.classList.contains('fullscreen')) { _onWindowStateChange(false); return; }
     if (np && np.classList.contains('on')) { closeNP(); return; }
     if (document.getElementById('pl-dialog-overlay')?.classList.contains('on')) { plDialogCancel(); return; }
     if (document.getElementById('pl-confirm-overlay')?.classList.contains('on')) { plConfirmCancel(); return; }
@@ -2882,17 +2739,17 @@ function _handleOrientationChange() {
         document.body.classList.add('np-fs');
         _onWindowStateChange(true);
     } else if (!isLandscape && np.classList.contains('fullscreen')) {
-        document.body.classList.remove('np-fs');
         _onWindowStateChange(false);
+        document.body.classList.remove('np-fs');
     }
 }
 window.addEventListener('resize', () => setTimeout(_handleOrientationChange, 180));
 window.addEventListener('orientationchange', () => setTimeout(_handleOrientationChange, 220));
 
-const _barElA = document.getElementById('bar');
-if (_barElA) {
-    _barElA.addEventListener('touchstart', e => {
-        const rect = _barElA.getBoundingClientRect();
+const _barElAndroid = document.getElementById('bar');
+if (_barElAndroid) {
+    _barElAndroid.addEventListener('touchstart', e => {
+        const rect = _barElAndroid.getBoundingClientRect();
         const touch = e.touches[0];
         if (touch.clientY > rect.bottom - 8) {
             e.preventDefault();
